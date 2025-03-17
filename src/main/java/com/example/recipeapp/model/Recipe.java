@@ -3,7 +3,7 @@ package com.example.recipeapp.model;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
-
+import java.util.HashMap;
 
 
 @Entity
@@ -16,8 +16,12 @@ public class Recipe {
     @Column
     private String title;
 
-    @Transient
-    private String ingredients;
+    @ElementCollection
+    @CollectionTable(name = "ingredients", joinColumns = @JoinColumn(name = "recipeId"))
+    @MapKeyColumn(name = "recipeId")
+    @Column(name = "ingredient")
+    //@Transient
+    private HashMap<Integer, Ingredient> ingredients = new HashMap<>();
 
     @Transient
     private String method;
@@ -30,7 +34,7 @@ public class Recipe {
     public Recipe(int id,
                   String imageUrl,
                   String method,
-                  String ingredients,
+                  HashMap<Integer, Ingredient> ingredients,
                   String title) {
         this.id = id;
         this.imageUrl = imageUrl;
@@ -55,11 +59,11 @@ public class Recipe {
         this.id = id;
     }
 
-    public String getIngredients() {
+    public HashMap<Integer, Ingredient> getIngredients() {
         return ingredients;
     }
 
-    public void setIngredients(String ingredients) {
+    public void setIngredients(HashMap<Integer, Ingredient> ingredients) {
         this.ingredients = ingredients;
     }
 

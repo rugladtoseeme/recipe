@@ -2,10 +2,7 @@ package com.example.recipeapp.service;
 
 import com.example.recipeapp.model.Recipe;
 import com.example.recipeapp.repository.RecipeRepository;
-import org.apache.tomcat.util.json.JSONParser;
-import org.apache.tomcat.util.json.ParseException;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -50,30 +47,12 @@ public class RecipesService {
                 String jsonResult = response.body();
                 System.out.println(jsonResult);
 
-                //Object parserObj = null;
-                try {
-                    Object parserObj = new JSONParser(jsonResult ).parse();
-                    //Object o1 = new JSONParser(jsonResult).;
-                    JSONObject jsonObject = (JSONObject) parserObj;
-
-                    String title = (String) jsonObject.get("title");
-                    String imageURL = (String) jsonObject.get("imageURL");
-                    JSONArray method = (JSONArray) jsonObject.get("method");
-                    String strMethod = method.toString();
-
-                    JSONArray ingredients = (JSONArray) jsonObject.get("ingredients");
-                    String strIngredient = ingredients.toString();
-
-                    Recipe recipe = new Recipe(id, imageURL, strMethod, strIngredient, title);
-
-                    saveRecipe(recipe);
-
-                    return recipe;
-                } catch (ParseException e) {
-                    throw new RuntimeException(e);
-                }
+                ObjectMapper mapper = new ObjectMapper();
+                Recipe recipe = mapper.readValue(jsonResult, Recipe.class);
 
 
+                saveRecipe(recipe);
+                return recipe;
 
             } catch (IOException | InterruptedException e) {
                 throw new RuntimeException(e);
