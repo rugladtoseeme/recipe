@@ -1,27 +1,34 @@
 package com.example.recipeapp.service;
 
+import com.example.recipeapp.model.Ingredient;
 import com.example.recipeapp.model.Recipe;
+import com.example.recipeapp.repository.IngredientRepository;
 import com.example.recipeapp.repository.RecipeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class RecipesService {
 
     private final RecipeRepository repository;
+    private final IngredientRepository ingredientRepository;
 
     @Autowired
-    public RecipesService(RecipeRepository repository) {
+    public RecipesService(RecipeRepository repository, IngredientRepository ingredientRepository) {
         this.repository = repository;
+        this.ingredientRepository = ingredientRepository;
     }
 
     public ArrayList<Recipe> findAllRecipes() {
@@ -48,20 +55,18 @@ public class RecipesService {
                 System.out.println(jsonResult);
 
                 ObjectMapper mapper = new ObjectMapper();
-                Recipe recipe = mapper.readValue(jsonResult, Recipe.class);
 
+                Recipe recipe = mapper.readValue(jsonResult, Recipe.class);
 
                 saveRecipe(recipe);
                 return recipe;
 
             } catch (IOException | InterruptedException e) {
-                throw new RuntimeException(e);
+                //throw new RuntimeException(e);
             }
         }
             return recipeById;
 
-            //здесь проверим если есть в бд с этим айди то получаем из бд, выводим
-            //если нет такого в бд то получаем из апишки, записываем в бд, выводим
         }
 
 
@@ -69,7 +74,31 @@ public class RecipesService {
         return repository.findById(id);
     }
 
+    @Transactional
     public void saveRecipe(Recipe recipe) {
+        Set<String> descriptions = recipe.getIngredients().stream()
+                                                            .map(Ingredient::getDescription)
+                                                            .collect(Collectors.toSet());
+
+        List<Ingredient> existingIngredients = ingredientRepository.findAllByDescriptionIn(descriptions);
+
+        Map<String, Ingredient> existingIngredientsMap = existingIngredients.stream()
+                .collect(Collectors.toMap(Ingredient::getDescription, Function.identity()));
+
+        Set<Ingredient> managedIngredients = new HashSet<>();
+
+        for (Ingredient ingredient : recipe.getIngredients()) {
+            Ingredient existingIngredient = existingIngredientsMap.get(ingredient.getDescription());
+            if (existingIngredient != null) {
+                managedIngredients.add(existingIngredient);
+            } else {
+                managedIngredients.add(ingredient);
+            }
+        }
+
+        recipe.setIngredients(managedIngredients);
+
         repository.save(recipe);
+
     }
 }
